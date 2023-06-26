@@ -580,9 +580,9 @@ public:
   ~SARA_R5();
   // Begin -- initialize module and ensure it's connected
 #ifdef SARA_R5_SOFTWARE_SERIAL_ENABLED
-  bool begin(SoftwareSerial &softSerial, unsigned long baud = 9600);
+  bool begin(SoftwareSerial &softSerial, unsigned long baud = 9600, bool reset = false);
 #endif
-  bool begin(HardwareSerial &hardSerial, unsigned long baud = 9600);
+  bool begin(HardwareSerial &hardSerial, unsigned long baud = 9600, bool reset = false);
 
   // Debug prints
   void enableDebugging(Print &debugPort = Serial); //Turn on debug printing. If user doesn't specify then Serial will be used.

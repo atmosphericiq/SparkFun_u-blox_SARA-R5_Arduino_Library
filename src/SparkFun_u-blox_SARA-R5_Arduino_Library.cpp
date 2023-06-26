@@ -71,7 +71,7 @@ SARA_R5::~SARA_R5(void) {
 }
 
 #ifdef SARA_R5_SOFTWARE_SERIAL_ENABLED
-bool SARA_R5::begin(SoftwareSerial &softSerial, unsigned long baud)
+bool SARA_R5::begin(SoftwareSerial &softSerial, unsigned long baud, bool reset)
 {
   if (nullptr == _saraRXBuffer)
   {
@@ -113,7 +113,7 @@ bool SARA_R5::begin(SoftwareSerial &softSerial, unsigned long baud)
 
   _softSerial = &softSerial;
 
-  err = init(baud);
+  err = init(baud, reset ? SARA_R5_INIT_RESET : SARA_R5_INIT_STANDARD);
   if (err == SARA_R5_ERROR_SUCCESS)
   {
     return true;
@@ -122,7 +122,7 @@ bool SARA_R5::begin(SoftwareSerial &softSerial, unsigned long baud)
 }
 #endif
 
-bool SARA_R5::begin(HardwareSerial &hardSerial, unsigned long baud)
+bool SARA_R5::begin(HardwareSerial &hardSerial, unsigned long baud, bool reset)
 {
   if (nullptr == _saraRXBuffer)
   {
@@ -164,7 +164,7 @@ bool SARA_R5::begin(HardwareSerial &hardSerial, unsigned long baud)
 
   _hardSerial = &hardSerial;
 
-  err = init(baud);
+  err = init(baud, reset ? SARA_R5_INIT_RESET : SARA_R5_INIT_STANDARD);
   if (err == SARA_R5_ERROR_SUCCESS)
   {
     return true;
