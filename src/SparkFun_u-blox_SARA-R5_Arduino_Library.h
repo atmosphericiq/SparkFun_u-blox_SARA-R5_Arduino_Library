@@ -898,6 +898,7 @@ public:
     GNSS_AIDING_MODE_ASSISTNOW_AUTONOMOUS = 8
   } gnss_aiding_mode_t;
   bool isGPSon(void);
+  SARA_R5_error_t gpsEnableAssistIndication(bool enable = true); // Enable UUGIND messages
   SARA_R5_error_t gpsPower(bool enable = true,
                            gnss_system_t gnss_sys = GNSS_SYSTEM_GPS,
                            gnss_aiding_mode_t gnss_aiding = GNSS_AIDING_MODE_AUTOMATIC);
@@ -1038,6 +1039,9 @@ private:
   void pruneBacklog(void);
 
   // GPS Helper functions
+  gnss_system_t _gnss_systems;
+  gnss_aiding_mode_t _gnss_aiding;
+  int _gnss_aiding_result;
   char *readDataUntil(char *destination, unsigned int destSize, char *source, char delimiter);
   bool parseGPRMCString(char *rmcString, PositionData *pos, ClockData *clk, SpeedData *spd);
 };

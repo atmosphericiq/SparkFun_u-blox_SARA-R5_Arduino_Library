@@ -53,6 +53,9 @@ SARA_R5::SARA_R5(int powerPin, int resetPin, uint8_t maxInitTries)
   _saraRXBuffer = nullptr;
   _pruneBuffer = nullptr;
   _saraResponseBacklog = nullptr;
+  _gnss_systems = GNSS_SYSTEM_GPS;
+  _gnss_aiding = GNSS_AIDING_MODE_NONE;
+  _gnss_aiding_result = 0;
 }
 
 SARA_R5::~SARA_R5(void) {
@@ -423,6 +426,94 @@ bool SARA_R5::processURCEvent(const char *event)
             _socketCloseCallback(socket);
           }
         }
+        return true;
+      }
+    }
+  }
+  { // URC: +UUGIND (Assisted GNSS unsolicited indication)
+    int aidMode, result;
+    char *searchPtr = strstr(event, "+UUGIND:");
+    if (searchPtr != nullptr)
+    {
+      searchPtr += strlen("+UUGIND:"); // Move searchPtr to first character - probably a space
+      while (*searchPtr == ' ') searchPtr++; // skip spaces
+      int ret = sscanf(searchPtr, "%d,%d", &aidMode, &result);
+      if (ret == 2)
+      {
+        if (_printDebug == true)
+          _debugPort->println(F("processReadEvent: GNSS indication"));
+
+        if (aidMode == 0)
+        {
+          _gnss_systems = (gnss_system_t) result;
+          if (_printDebug == true)
+          {
+            _debugPort->print(F("processReadEvent: GNSS systems: "));
+            _debugPort->print((int) _gnss_systems);
+            _debugPort->print(F(" ["));
+            if (_gnss_systems & GNSS_SYSTEM_GPS)
+            {
+              _debugPort->print(F(" GPS"));
+            }
+            if (_gnss_systems & GNSS_SYSTEM_SBAS)
+            {
+              _debugPort->print(F(" SBAS"));
+            }
+            if (_gnss_systems & GNSS_SYSTEM_GALILEO)
+            {
+              _debugPort->print(F(" Galileo"));
+            }
+            if (_gnss_systems & GNSS_SYSTEM_BEIDOU)
+            {
+              _debugPort->print(F(" BeiDou"));
+            }
+            if (_gnss_systems & GNSS_SYSTEM_IMES)
+            {
+              _debugPort->print(F(" IMES"));
+            }
+            if (_gnss_systems & GNSS_SYSTEM_QZSS)
+            {
+              _debugPort->print(F(" QZSS"));
+            }
+            if (_gnss_systems & GNSS_SYSTEM_GLONASS)
+            {
+              _debugPort->print(F(" GLONASS"));
+            }
+            _debugPort->println(F(" ]"));
+          }
+        }
+        else 
+        {
+          _gnss_aiding = (gnss_aiding_mode_t) aidMode;
+          _gnss_aiding_result = result;
+          if (_printDebug == true)
+          {
+            _debugPort->print(F("processReadEvent: GNSS aiding mode: "));
+            if (_gnss_aiding == GNSS_AIDING_MODE_AUTOMATIC)
+            {
+              _debugPort->print(F("automatic local"));
+            }
+            else if (_gnss_aiding == GNSS_AIDING_MODE_ASSISTNOW_OFFLINE)
+            {
+              _debugPort->print(F("AssistNow Offline"));
+            }
+            else if (_gnss_aiding == GNSS_AIDING_MODE_ASSISTNOW_ONLINE)
+            {
+              _debugPort->print(F("AssistNow Online"));
+            }
+            else if (_gnss_aiding == GNSS_AIDING_MODE_ASSISTNOW_AUTONOMOUS)
+            {
+              _debugPort->print(F("AssistNow Autonomous"));
+            }
+            else
+            {
+              _debugPort->print(F("Unknown"));
+            }
+            _debugPort->print(F(", result: "));
+            _debugPort->println(_gnss_aiding_result);
+          }
+        }
+
         return true;
       }
     }
@@ -4712,19 +4803,37 @@ bool SARA_R5::isGPSon(void)
   return on;
 }
 
+SARA_R5_error_t SARA_R5::gpsEnableAssistIndication(bool enable)
+{
+  SARA_R5_error_t err;
+  char *command;
+
+  command = sara_r5_calloc_char(strlen(SARA_R5_GNSS_ASSISTED_IND) + 3);
+  if (command == nullptr)
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  sprintf(command, "%s=%d", SARA_R5_GNSS_ASSISTED_IND, enable ? 1 : 0);
+
+  err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, nullptr, SARA_R5_STANDARD_RESPONSE_TIMEOUT);
+
+  free(command);
+  return err;
+}
+
 SARA_R5_error_t SARA_R5::gpsPower(bool enable, gnss_system_t gnss_sys, gnss_aiding_mode_t gnss_aiding)
 {
   SARA_R5_error_t err;
   char *command;
   bool gpsState;
+  bool newSetting = (gnss_sys != _gnss_systems) || (gnss_aiding != _gnss_aiding);
 
-  // Don't turn GPS on/off if it's already on/off
+  // Don't turn GPS on/off if it's already on/off and settings are the same
   gpsState = isGPSon();
-  if ((enable && gpsState) || (!enable && !gpsState))
+  if (!newSetting && ((enable && gpsState) || (!enable && !gpsState)))
   {
     return SARA_R5_ERROR_SUCCESS;
   }
-
+  // GPS indication same as power
+  gpsEnableAssistIndication(enable);
   // GPS power management
   command = sara_r5_calloc_char(strlen(SARA_R5_GNSS_POWER) + 32); // gnss_sys could be up to three digits
   if (command == nullptr)
@@ -6280,6 +6389,7 @@ void SARA_R5::pruneBacklog()
         || (strstr(event, "+UUSORF:") != nullptr)
         || (strstr(event, "+UUSOLI:") != nullptr)
         || (strstr(event, "+UUSOCL:") != nullptr)
+        || (strstr(event, "+UUGIND:") != nullptr)
         || (strstr(event, "+UULOC:") != nullptr)
         || (strstr(event, "+UUSIMSTAT:") != nullptr)
         || (strstr(event, "+UUPSDA:") != nullptr)
