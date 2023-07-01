@@ -167,7 +167,8 @@ const char SARA_R5_MQTT_PROTOCOL_ERROR[] = "+UMQTTER";
 const char SARA_R5_GNSS_POWER[] = "+UGPS";                   // GNSS power management configuration
 const char SARA_R5_GNSS_ASSISTED_IND[] = "+UGIND";           // Assisted GNSS unsolicited indication
 const char SARA_R5_GNSS_REQUEST_LOCATION[] = "+ULOC";        // Ask for localization information
-const char SARA_R5_GNSS_GPRMC[] = "+UGRMC";                  // Ask for localization information
+const char SARA_R5_GNSS_GPGGA[] = "+UGGGA";                  // Ask for GNSS fix data
+const char SARA_R5_GNSS_GPRMC[] = "+UGRMC";                  // Ask for recommended minimum GNSS data
 const char SARA_R5_GNSS_REQUEST_TIME[] = "+UTIME";           // Ask for time information from cellular modem (CellTime)
 const char SARA_R5_GNSS_TIME_INDICATION[] = "+UTIMEIND";     // Time information request status unsolicited indication
 const char SARA_R5_GNSS_TIME_CONFIGURATION[] = "+UTIMECFG";  // Sets time configuration
@@ -904,14 +905,15 @@ public:
                            gnss_aiding_mode_t gnss_aiding = GNSS_AIDING_MODE_AUTOMATIC);
   //SARA_R5_error_t gpsEnableClock(bool enable = true);
   //SARA_R5_error_t gpsGetClock(struct ClockData *clock);
-  //SARA_R5_error_t gpsEnableFix(bool enable = true);
-  //SARA_R5_error_t gpsGetFix(float *lat, float *lon, unsigned int *alt, uint8_t *quality, uint8_t *sat);
-  //SARA_R5_error_t gpsGetFix(struct PositionData *pos);
+  SARA_R5_error_t gpsEnableFix(bool enable = true); // Enable GPGGA messages
+  SARA_R5_error_t gpsGetFixResponse(char *buf, size_t size, size_t *len); //Get GPGGA message
+  SARA_R5_error_t gpsGetFix(struct PositionData *pos, struct ClockData *clk, uint8_t *quality, uint8_t *sat, float *hdop); //Parse a GPGGA message
   //SARA_R5_error_t gpsEnablePos(bool enable = true);
   //SARA_R5_error_t gpsGetPos(struct PositionData *pos);
   //SARA_R5_error_t gpsEnableSat(bool enable = true);
   //SARA_R5_error_t gpsGetSat(uint8_t *sats);
   SARA_R5_error_t gpsEnableRmc(bool enable = true); // Enable GPRMC messages
+  SARA_R5_error_t gpsGetRmcResponse(char *buf, size_t size, size_t *len); //Get GPRMC message
   SARA_R5_error_t gpsGetRmc(struct PositionData *pos, struct SpeedData *speed, struct ClockData *clk, bool *valid); //Parse a GPRMC message
   //SARA_R5_error_t gpsEnableSpeed(bool enable = true);
   //SARA_R5_error_t gpsGetSpeed(struct SpeedData *speed);
@@ -1043,6 +1045,7 @@ private:
   gnss_aiding_mode_t _gnss_aiding;
   int _gnss_aiding_result;
   char *readDataUntil(char *destination, unsigned int destSize, char *source, char delimiter);
+  bool parseGPGGAString(char *ggaString, PositionData *pos, ClockData *clk, uint8_t *quality, uint8_t *sat, float *hdop);
   bool parseGPRMCString(char *rmcString, PositionData *pos, ClockData *clk, SpeedData *spd);
 };
 

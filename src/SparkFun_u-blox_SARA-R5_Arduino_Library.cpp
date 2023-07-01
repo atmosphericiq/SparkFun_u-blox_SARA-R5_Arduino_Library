@@ -4867,21 +4867,118 @@ SARA_R5_error_t SARA_R5::gpsGetClock(struct ClockData *clock)
     SARA_R5_error_t err = SARA_R5_ERROR_SUCCESS;
     return err;
 }
+*/
 
 SARA_R5_error_t SARA_R5::gpsEnableFix(bool enable)
 {
-    // AT+UGGGA=<0,1>
-    SARA_R5_error_t err = SARA_R5_ERROR_SUCCESS;
-    return err;
+  // AT+UGGGA=<0,1>
+  SARA_R5_error_t err;
+  char *command;
+
+  command = sara_r5_calloc_char(strlen(SARA_R5_GNSS_GPGGA) + 3);
+  if (command == nullptr)
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  sprintf(command, "%s=%d", SARA_R5_GNSS_GPGGA, enable ? 1 : 0);
+
+  err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, nullptr, SARA_R5_10_SEC_TIMEOUT);
+
+  free(command);
+  return err;
 }
 
-SARA_R5_error_t SARA_R5::gpsGetFix(struct PositionData *pos)
+SARA_R5_error_t gpsGetFixResponse(char *buf, size_t size, size_t *len)
 {
-    // AT+UGGGA?
-    SARA_R5_error_t err = SARA_R5_ERROR_SUCCESS;
-    return err;
+ // AT+UGGGA?
+  SARA_R5_error_t err;
+  char *command;
+  char *response;
+  char *ggaBegin;
+  int ggaLen;
+
+  if (buf == nullptr || size < minimumResponseAllocation)
+    return SARA_R5_ERROR_UNEXPECTED_PARAM;
+
+  command = sara_r5_calloc_char(strlen(SARA_R5_GNSS_GPGGA) + 2);
+  if (command == nullptr)
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  sprintf(command, "%s?", SARA_R5_GNSS_GPGGA);
+
+  response = sara_r5_calloc_char(minimumResponseAllocation);
+  if (response == nullptr)
+  {
+    free(command);
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  }
+
+  err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, response, SARA_R5_10_SEC_TIMEOUT);
+  if (err == SARA_R5_ERROR_SUCCESS)
+  {
+    // Fast-forward response string to $GPGGA starter
+    ggaBegin = strstr(response, "$GPGGA");
+    ggaLen = strlen(ggaBegin);
+    if (ggaBegin == nullptr)
+    {
+      err = SARA_R5_ERROR_UNEXPECTED_RESPONSE;
+    }
+    else if (ggaLen >= size)
+    {
+      err = SARA_R5_ERROR_OUT_OF_MEMORY;
+    }
+    else
+    {
+      memset(buf, 0, size);
+      memcpy(buf, ggaBegin, ggaLen);
+      if (len)
+        *len = ggaLen;
+    }
+  }
+
+  free(command);
+  free(response);
+  return err;
 }
 
+SARA_R5_error_t SARA_R5::gpsGetFix(struct PositionData *pos, struct ClockData *clk, uint8_t *quality, uint8_t *sat, float *hdop)
+{
+  // AT+UGGGA?
+  SARA_R5_error_t err;
+  char *command;
+  char *response;
+  char *ggaBegin;
+
+  command = sara_r5_calloc_char(strlen(SARA_R5_GNSS_GPGGA) + 2);
+  if (command == nullptr)
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  sprintf(command, "%s?", SARA_R5_GNSS_GPGGA);
+
+  response = sara_r5_calloc_char(minimumResponseAllocation);
+  if (response == nullptr)
+  {
+    free(command);
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  }
+
+  err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, response, SARA_R5_10_SEC_TIMEOUT);
+  if (err == SARA_R5_ERROR_SUCCESS)
+  {
+    // Fast-forward response string to $GPGGA starter
+    ggaBegin = strstr(response, "$GPGGA");
+    if (ggaBegin == nullptr)
+    {
+      err = SARA_R5_ERROR_UNEXPECTED_RESPONSE;
+    }
+    else
+    {
+      parseGPGGAString(ggaBegin, pos, clk, quality, sat, hdop);
+    }
+  }
+
+  free(command);
+  free(response);
+  return err;
+}
+
+/*
 SARA_R5_error_t SARA_R5::gpsEnablePos(bool enable)
 {
     // AT+UGGLL=<0,1>
@@ -4936,6 +5033,56 @@ SARA_R5_error_t SARA_R5::gpsEnableRmc(bool enable)
   err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, nullptr, SARA_R5_10_SEC_TIMEOUT);
 
   free(command);
+  return err;
+}
+
+SARA_R5_error_t gpsGetRmcResponse(char *buf, size_t size, size_t *len) //Get GPRMC message
+{
+  SARA_R5_error_t err;
+  char *command;
+  char *response;
+  char *rmcBegin;
+  int rmcLen;
+
+  if (buf == nullptr || size < minimumResponseAllocation)
+    return SARA_R5_ERROR_UNEXPECTED_PARAM;
+
+  command = sara_r5_calloc_char(strlen(SARA_R5_GNSS_GPRMC) + 2);
+  if (command == nullptr)
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  sprintf(command, "%s?", SARA_R5_GNSS_GPRMC);
+
+  response = sara_r5_calloc_char(minimumResponseAllocation);
+  if (response == nullptr)
+  {
+    free(command);
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  }
+
+  err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, response, SARA_R5_10_SEC_TIMEOUT);
+  if (err == SARA_R5_ERROR_SUCCESS)
+  {
+    // Fast-forward response string to $GPRMC starter
+    rmcBegin = strstr(response, "$GPRMC");
+    if (rmcBegin == nullptr)
+    {
+      err = SARA_R5_ERROR_UNEXPECTED_RESPONSE;
+    }
+    else if (rmcLen >= size)
+    {
+      err = SARA_R5_ERROR_OUT_OF_MEMORY;
+    }
+    else
+    {
+      memset(buf, 0, size);
+      memcpy(buf, rmcBegin, rmcLen);
+      if (len)
+        *len = rmcLen;
+    }
+  }
+
+  free(command);
+  free(response);
   return err;
 }
 
@@ -6447,6 +6594,197 @@ char *SARA_R5::readDataUntil(char *destination, unsigned int destSize,
   }
 
   return strEnd;
+}
+
+bool SARA_R5::parseGPGGAString(char *ggaString, PositionData *pos, 
+                               ClockData *clk, uint8_t *quality, 
+                               uint8_t *sat, float *hdop)
+{
+  char *ptr, *search;
+  unsigned long tTemp;
+  char tempData[TEMP_NMEA_DATA_SIZE];
+  return false;
+  // if (_printDebug == true)
+  // {
+  //   _debugPort->println(F("parseGPGGAString: ggaString: "));
+  //   _debugPort->println(ggaString);
+  // }
+
+  // Fast-forward test to first value:
+  ptr = strchr(ggaString, ',');
+  ptr++; // Move ptr past first comma
+
+  // If the next character is another comma, there's no time data
+  // Find time:
+  search = readDataUntil(tempData, TEMP_NMEA_DATA_SIZE, ptr, ',');
+  // Next comma should be present and not the next position
+  if ((search != nullptr) && (search != ptr))
+  {
+    pos->utc = atof(tempData);                             // Extract hhmmss.ss as float
+    tTemp = pos->utc;                                      // Convert to unsigned long (discard the digits beyond the decimal point)
+    clk->time.ms = ((unsigned int)(pos->utc * 100)) % 100; // Extract the milliseconds
+    clk->time.hour = tTemp / 10000;
+    tTemp -= ((unsigned long)clk->time.hour * 10000);
+    clk->time.minute = tTemp / 100;
+    tTemp -= ((unsigned long)clk->time.minute * 100);
+    clk->time.second = tTemp;
+  }
+  else
+  {
+    pos->utc = 0.0;
+    clk->time.hour = 0;
+    clk->time.minute = 0;
+    clk->time.second = 0;
+  }
+  ptr = search + 1; // Move pointer to next value
+
+  // Find status character:
+  search = readDataUntil(tempData, TEMP_NMEA_DATA_SIZE, ptr, ',');
+  // Should be a single character: V = Data invalid, A = Data valid
+  if ((search != nullptr) && (search == ptr + 1))
+  {
+    pos->status = *ptr; // Assign char at ptr to status
+  }
+  else
+  {
+    pos->status = 'X'; // Made up very bad status
+  }
+  ptr = search + 1;
+
+  // Find latitude:
+  search = readDataUntil(tempData, TEMP_NMEA_DATA_SIZE, ptr, ',');
+  if ((search != nullptr) && (search != ptr))
+  {
+    pos->lat = atof(tempData);              // Extract ddmm.mmmmm as float
+    unsigned long lat_deg = pos->lat / 100; // Extract the degrees
+    pos->lat -= (float)lat_deg * 100.0;     // Subtract the degrees leaving only the minutes
+    pos->lat /= 60.0;                       // Convert minutes into degrees
+    pos->lat += (float)lat_deg;             // Finally add the degrees back on again
+  }
+  else
+  {
+    pos->lat = 0.0;
+  }
+  ptr = search + 1;
+
+  // Find latitude hemishpere
+  search = readDataUntil(tempData, TEMP_NMEA_DATA_SIZE, ptr, ',');
+  if ((search != nullptr) && (search == ptr + 1))
+  {
+    if (*ptr == 'S')    // Is the latitude South
+      pos->lat *= -1.0; // Make lat negative
+  }
+  ptr = search + 1;
+
+  // Find longitude:
+  search = readDataUntil(tempData, TEMP_NMEA_DATA_SIZE, ptr, ',');
+  if ((search != nullptr) && (search != ptr))
+  {
+    pos->lon = atof(tempData);              // Extract dddmm.mmmmm as float
+    unsigned long lon_deg = pos->lon / 100; // Extract the degrees
+    pos->lon -= (float)lon_deg * 100.0;     // Subtract the degrees leaving only the minutes
+    pos->lon /= 60.0;                       // Convert minutes into degrees
+    pos->lon += (float)lon_deg;             // Finally add the degrees back on again
+  }
+  else
+  {
+    pos->lon = 0.0;
+  }
+  ptr = search + 1;
+
+  // Find longitude hemishpere
+  search = readDataUntil(tempData, TEMP_NMEA_DATA_SIZE, ptr, ',');
+  if ((search != nullptr) && (search == ptr + 1))
+  {
+    if (*ptr == 'W')    // Is the longitude West
+      pos->lon *= -1.0; // Make lon negative
+  }
+  ptr = search + 1;
+#if 0
+  // Find speed
+  search = readDataUntil(tempData, TEMP_NMEA_DATA_SIZE, ptr, ',');
+  if ((search != nullptr) && (search != ptr))
+  {
+    spd->speed = atof(tempData); // Extract speed over ground in knots
+    spd->speed *= 0.514444;      // Convert to m/s
+  }
+  else
+  {
+    spd->speed = 0.0;
+  }
+  ptr = search + 1;
+
+  // Find course over ground
+  search = readDataUntil(tempData, TEMP_NMEA_DATA_SIZE, ptr, ',');
+  if ((search != nullptr) && (search != ptr))
+  {
+    spd->cog = atof(tempData);
+  }
+  else
+  {
+    spd->cog = 0.0;
+  }
+  ptr = search + 1;
+
+  // Find date
+  search = readDataUntil(tempData, TEMP_NMEA_DATA_SIZE, ptr, ',');
+  if ((search != nullptr) && (search != ptr))
+  {
+    tTemp = atol(tempData);
+    clk->date.day = tTemp / 10000;
+    tTemp -= ((unsigned long)clk->date.day * 10000);
+    clk->date.month = tTemp / 100;
+    tTemp -= ((unsigned long)clk->date.month * 100);
+    clk->date.year = tTemp;
+  }
+  else
+  {
+    clk->date.day = 0;
+    clk->date.month = 0;
+    clk->date.year = 0;
+  }
+  ptr = search + 1;
+
+  // Find magnetic variation in degrees:
+  search = readDataUntil(tempData, TEMP_NMEA_DATA_SIZE, ptr, ',');
+  if ((search != nullptr) && (search != ptr))
+  {
+    spd->magVar = atof(tempData);
+  }
+  else
+  {
+    spd->magVar = 0.0;
+  }
+  ptr = search + 1;
+
+  // Find magnetic variation direction
+  search = readDataUntil(tempData, TEMP_NMEA_DATA_SIZE, ptr, ',');
+  if ((search != nullptr) && (search == ptr + 1))
+  {
+    if (*ptr == 'W')       // Is the magnetic variation West
+      spd->magVar *= -1.0; // Make magnetic variation negative
+  }
+  ptr = search + 1;
+
+  // Find position system mode
+  // Possible values for posMode: N = No fix, E = Estimated/Dead reckoning fix, A = Autonomous GNSS fix,
+  //                              D = Differential GNSS fix, F = RTK float, R = RTK fixed
+  search = readDataUntil(tempData, TEMP_NMEA_DATA_SIZE, ptr, '*');
+  if ((search != nullptr) && (search = ptr + 1))
+  {
+    pos->mode = *ptr;
+  }
+  else
+  {
+    pos->mode = 'X';
+  }
+  ptr = search + 1;
+#endif
+  if (pos->status == 'A')
+  {
+    return true;
+  }
+  return false;
 }
 
 bool SARA_R5::parseGPRMCString(char *rmcString, PositionData *pos,
