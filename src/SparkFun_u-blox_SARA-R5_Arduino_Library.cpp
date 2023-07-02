@@ -53,9 +53,8 @@ SARA_R5::SARA_R5(int powerPin, int resetPin, uint8_t maxInitTries)
   _saraRXBuffer = nullptr;
   _pruneBuffer = nullptr;
   _saraResponseBacklog = nullptr;
-  _gnss_systems = GNSS_SYSTEM_GPS;
-  _gnss_aiding = GNSS_AIDING_MODE_NONE;
-  _gnss_aiding_result = 0;
+  _gnssSystems = GNSS_SYSTEM_GPS;
+  _gnssAiding = GNSS_AIDING_MODE_NONE;
 }
 
 SARA_R5::~SARA_R5(void) {
@@ -445,37 +444,37 @@ bool SARA_R5::processURCEvent(const char *event)
 
         if (aidMode == 0)
         {
-          _gnss_systems = (gnss_system_t) result;
+          _gnssSystems = (gnss_system_t) result;
           if (_printDebug == true)
           {
             _debugPort->print(F("processReadEvent: GNSS systems: "));
-            _debugPort->print((int) _gnss_systems);
+            _debugPort->print((int) _gnssSystems);
             _debugPort->print(F(" ["));
-            if (_gnss_systems & GNSS_SYSTEM_GPS)
+            if (_gnssSystems & GNSS_SYSTEM_GPS)
             {
               _debugPort->print(F(" GPS"));
             }
-            if (_gnss_systems & GNSS_SYSTEM_SBAS)
+            if (_gnssSystems & GNSS_SYSTEM_SBAS)
             {
               _debugPort->print(F(" SBAS"));
             }
-            if (_gnss_systems & GNSS_SYSTEM_GALILEO)
+            if (_gnssSystems & GNSS_SYSTEM_GALILEO)
             {
               _debugPort->print(F(" Galileo"));
             }
-            if (_gnss_systems & GNSS_SYSTEM_BEIDOU)
+            if (_gnssSystems & GNSS_SYSTEM_BEIDOU)
             {
               _debugPort->print(F(" BeiDou"));
             }
-            if (_gnss_systems & GNSS_SYSTEM_IMES)
+            if (_gnssSystems & GNSS_SYSTEM_IMES)
             {
               _debugPort->print(F(" IMES"));
             }
-            if (_gnss_systems & GNSS_SYSTEM_QZSS)
+            if (_gnssSystems & GNSS_SYSTEM_QZSS)
             {
               _debugPort->print(F(" QZSS"));
             }
-            if (_gnss_systems & GNSS_SYSTEM_GLONASS)
+            if (_gnssSystems & GNSS_SYSTEM_GLONASS)
             {
               _debugPort->print(F(" GLONASS"));
             }
@@ -484,24 +483,23 @@ bool SARA_R5::processURCEvent(const char *event)
         }
         else 
         {
-          _gnss_aiding = (gnss_aiding_mode_t) aidMode;
-          _gnss_aiding_result = result;
+          _gnssAiding = (gnss_aiding_mode_t) aidMode;
           if (_printDebug == true)
           {
             _debugPort->print(F("processReadEvent: GNSS aiding mode: "));
-            if (_gnss_aiding == GNSS_AIDING_MODE_AUTOMATIC)
+            if (_gnssAiding == GNSS_AIDING_MODE_AUTOMATIC)
             {
               _debugPort->print(F("automatic local"));
             }
-            else if (_gnss_aiding == GNSS_AIDING_MODE_ASSISTNOW_OFFLINE)
+            else if (_gnssAiding == GNSS_AIDING_MODE_ASSISTNOW_OFFLINE)
             {
               _debugPort->print(F("AssistNow Offline"));
             }
-            else if (_gnss_aiding == GNSS_AIDING_MODE_ASSISTNOW_ONLINE)
+            else if (_gnssAiding == GNSS_AIDING_MODE_ASSISTNOW_ONLINE)
             {
               _debugPort->print(F("AssistNow Online"));
             }
-            else if (_gnss_aiding == GNSS_AIDING_MODE_ASSISTNOW_AUTONOMOUS)
+            else if (_gnssAiding == GNSS_AIDING_MODE_ASSISTNOW_AUTONOMOUS)
             {
               _debugPort->print(F("AssistNow Autonomous"));
             }
@@ -510,7 +508,7 @@ bool SARA_R5::processURCEvent(const char *event)
               _debugPort->print(F("Unknown"));
             }
             _debugPort->print(F(", result: "));
-            _debugPort->println(_gnss_aiding_result);
+            _debugPort->println(result);
           }
         }
 
@@ -4787,13 +4785,27 @@ bool SARA_R5::isGPSon(void)
   if (err == SARA_R5_ERROR_SUCCESS)
   {
     // Example response: "+UGPS: 0" for off "+UGPS: 1,0,1" for on
-    // Search for a ':' followed by a '1' or ' 1'
-    char *pch1 = strchr(response, ':');
-    if (pch1 != nullptr)
+    int scanned = 0;
+    int mode = 0;
+    int aidMode = 0;
+    int gnssSystems = 0;
+    char *searchPtr = strstr(response, "+UGPS:");
+    if (searchPtr != nullptr)
     {
-      char *pch2 = strchr(response, '1');
-      if ((pch2 != nullptr) && ((pch2 == pch1 + 1) || (pch2 == pch1 + 2)))
+      searchPtr += strlen("+UGPS:"); //  Move searchPtr to first char
+      while (*searchPtr == ' ') searchPtr++; // skip spaces
+      scanned = sscanf(searchPtr, "%d", &mode);
+      if (scanned == 1 && mode != 0)
+      {
         on = true;
+        searchPtr += 1; // Move searchPtr after first arg
+        scanned = sscanf(searchPtr, ",%d,%d\r\n", &aidMode, &gnssSystems);
+        if (scanned == 2)
+        {
+          _gnssAiding = (gnss_aiding_mode_t) aidMode;
+          _gnssSystems = (gnss_system_t) gnssSystems;
+        }
+      }
     }
   }
 
@@ -4823,12 +4835,13 @@ SARA_R5_error_t SARA_R5::gpsPower(bool enable, gnss_system_t gnss_sys, gnss_aidi
 {
   SARA_R5_error_t err;
   char *command;
-  bool gpsState;
-  bool newSetting = (gnss_sys != _gnss_systems) || (gnss_aiding != _gnss_aiding);
+  bool gpsState = false;
+  bool newSetting = false;
 
   // Don't turn GPS on/off if it's already on/off and settings are the same
-  gpsState = isGPSon();
-  if (!newSetting && ((enable && gpsState) || (!enable && !gpsState)))
+  gpsState = isGPSon(); // call isGPSon() to fetch latest gnss systems and aiding value
+  newSetting = (gnss_sys != _gnssSystems) || (gnss_aiding != _gnssAiding);
+  if ((enable && gpsState && !newSetting) || (!enable && !gpsState))
   {
     return SARA_R5_ERROR_SUCCESS;
   }
@@ -4930,15 +4943,15 @@ SARA_R5_error_t SARA_R5::gpsGetFixResponse(char *buf, size_t size, size_t *len)
       {
         int ggaLen = ggaEnd - ggaBegin;
         if (ggaLen >= size)
-    {
-      err = SARA_R5_ERROR_OUT_OF_MEMORY;
-    }
-    else
-    {
-      memset(buf, 0, size);
-      memcpy(buf, ggaBegin, ggaLen);
-      if (len)
-        *len = ggaLen;
+        {
+          err = SARA_R5_ERROR_OUT_OF_MEMORY;
+        }
+        else
+        {
+          memset(buf, 0, size);
+          memcpy(buf, ggaBegin, ggaLen);
+          if (len)
+            *len = ggaLen;
         }
       }
     }
@@ -5090,15 +5103,15 @@ SARA_R5_error_t SARA_R5::gpsGetRmcResponse(char *buf, size_t size, size_t *len) 
       {
         int rmcLen = rmcEnd - rmcBegin;
         if (rmcLen >= size)
-    {
-      err = SARA_R5_ERROR_OUT_OF_MEMORY;
-    }
-    else
-    {
-      memset(buf, 0, size);
-      memcpy(buf, rmcBegin, rmcLen);
-      if (len)
-        *len = rmcLen;
+        {
+          err = SARA_R5_ERROR_OUT_OF_MEMORY;
+        }
+        else
+        {
+          memset(buf, 0, size);
+          memcpy(buf, rmcBegin, rmcLen);
+          if (len)
+            *len = rmcLen;
         }
       }
     }

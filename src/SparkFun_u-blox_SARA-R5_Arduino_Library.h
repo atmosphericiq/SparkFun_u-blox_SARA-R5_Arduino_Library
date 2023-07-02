@@ -1041,9 +1041,8 @@ private:
   void pruneBacklog(void);
 
   // GPS Helper functions
-  gnss_system_t _gnss_systems;
-  gnss_aiding_mode_t _gnss_aiding;
-  int _gnss_aiding_result;
+  gnss_system_t _gnssSystems;
+  gnss_aiding_mode_t _gnssAiding;
   char *readDataUntil(char *destination, unsigned int destSize, char *source, char delimiter);
   bool parseGPGGAString(char *ggaString, PositionData *pos, ClockData *clk, uint8_t *quality, uint8_t *sat, float *hdop);
   bool parseGPRMCString(char *rmcString, PositionData *pos, ClockData *clk, SpeedData *spd);
