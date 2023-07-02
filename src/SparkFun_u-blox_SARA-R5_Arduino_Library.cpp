@@ -4893,7 +4893,7 @@ SARA_R5_error_t SARA_R5::gpsGetFixResponse(char *buf, size_t size, size_t *len)
   char *command;
   char *response;
   char *ggaBegin;
-  int ggaLen;
+  char *ggaEnd;
 
   if (buf == nullptr || size < minimumResponseAllocation)
     return SARA_R5_ERROR_UNEXPECTED_PARAM;
@@ -4915,12 +4915,21 @@ SARA_R5_error_t SARA_R5::gpsGetFixResponse(char *buf, size_t size, size_t *len)
   {
     // Fast-forward response string to $GPGGA starter
     ggaBegin = strstr(response, "$GPGGA");
-    ggaLen = strlen(ggaBegin);
     if (ggaBegin == nullptr)
     {
       err = SARA_R5_ERROR_UNEXPECTED_RESPONSE;
     }
-    else if (ggaLen >= size)
+    else 
+    {
+      ggaEnd = strstr(ggaBegin, "\r\n");
+      if (ggaEnd == nullptr)
+      {
+        err = SARA_R5_ERROR_UNEXPECTED_RESPONSE;
+      }
+      else 
+      {
+        int ggaLen = ggaEnd - ggaBegin;
+        if (ggaLen >= size)
     {
       err = SARA_R5_ERROR_OUT_OF_MEMORY;
     }
@@ -4930,6 +4939,8 @@ SARA_R5_error_t SARA_R5::gpsGetFixResponse(char *buf, size_t size, size_t *len)
       memcpy(buf, ggaBegin, ggaLen);
       if (len)
         *len = ggaLen;
+        }
+      }
     }
   }
 
@@ -5042,7 +5053,7 @@ SARA_R5_error_t SARA_R5::gpsGetRmcResponse(char *buf, size_t size, size_t *len) 
   char *command;
   char *response;
   char *rmcBegin;
-  int rmcLen;
+  char *rmcEnd;
 
   if (buf == nullptr || size < minimumResponseAllocation)
     return SARA_R5_ERROR_UNEXPECTED_PARAM;
@@ -5068,7 +5079,17 @@ SARA_R5_error_t SARA_R5::gpsGetRmcResponse(char *buf, size_t size, size_t *len) 
     {
       err = SARA_R5_ERROR_UNEXPECTED_RESPONSE;
     }
-    else if (rmcLen >= size)
+    else 
+    {
+      rmcEnd = strstr(rmcBegin, "\r\n");
+      if (rmcEnd == nullptr)
+      {
+        err = SARA_R5_ERROR_UNEXPECTED_RESPONSE;
+      }
+      else 
+      {
+        int rmcLen = rmcEnd - rmcBegin;
+        if (rmcLen >= size)
     {
       err = SARA_R5_ERROR_OUT_OF_MEMORY;
     }
@@ -5078,6 +5099,8 @@ SARA_R5_error_t SARA_R5::gpsGetRmcResponse(char *buf, size_t size, size_t *len) 
       memcpy(buf, rmcBegin, rmcLen);
       if (len)
         *len = rmcLen;
+        }
+      }
     }
   }
 
