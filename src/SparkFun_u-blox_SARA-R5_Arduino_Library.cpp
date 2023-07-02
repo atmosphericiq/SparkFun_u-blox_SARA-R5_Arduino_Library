@@ -4886,7 +4886,7 @@ SARA_R5_error_t SARA_R5::gpsEnableFix(bool enable)
   return err;
 }
 
-SARA_R5_error_t gpsGetFixResponse(char *buf, size_t size, size_t *len)
+SARA_R5_error_t SARA_R5::gpsGetFixResponse(char *buf, size_t size, size_t *len)
 {
  // AT+UGGGA?
   SARA_R5_error_t err;
@@ -5036,7 +5036,7 @@ SARA_R5_error_t SARA_R5::gpsEnableRmc(bool enable)
   return err;
 }
 
-SARA_R5_error_t gpsGetRmcResponse(char *buf, size_t size, size_t *len) //Get GPRMC message
+SARA_R5_error_t SARA_R5::gpsGetRmcResponse(char *buf, size_t size, size_t *len) //Get GPRMC message
 {
   SARA_R5_error_t err;
   char *command;
