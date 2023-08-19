@@ -108,6 +108,7 @@ const char SARA_R5_COMMAND_FUNC[] = "+CFUN";         // Functionality (reset, et
 const char SARA_R5_COMMAND_CLOCK[] = "+CCLK";        // Real-time clock
 const char SARA_R5_COMMAND_AUTO_TZ[] = "+CTZU";      // Automatic time zone update
 const char SARA_R5_COMMAND_TZ_REPORT[] = "+CTZR";    // Time zone reporting
+const char SARA_R5_COMMAND_CME_REPORT[] = "+CMEE";   // Mobile termination error reporting
 // ### Network service
 const char SARA_R5_COMMAND_CNUM[] = "+CNUM"; // Subscriber number
 const char SARA_R5_SIGNAL_QUALITY[] = "+CSQ";
@@ -382,6 +383,13 @@ typedef enum
   SARA_R5_UTIME_URC_CONFIGURATION_ENABLED
 } SARA_R5_utime_urc_configuration_t;
 
+typedef enum 
+{
+  SARA_R5_CME_REPORT_OFF = 0, // +CME ERROR: <err> result code disabled and ERROR used
+  SARA_R5_CME_REPORT_NUMERIC, // +CME ERROR: <err> result code enabled and numeric <err> values used
+  SARA_R5_CME_REPORT_VERBOSE, // +CME ERROR: <err> result code enabled and verbose <err> values used
+} SARA_R5_cme_report_t;
+
 typedef enum
 {
   SARA_R5_SIM_NOT_PRESENT = 0,
@@ -438,6 +446,24 @@ typedef enum
   SARA_R5_HTTP_CONTENT_APPLICATION_XML,
   SARA_R5_HTTP_CONTENT_USER_DEFINED
 } SARA_R5_http_content_types_t;
+
+typedef enum
+{
+  SARA_R5_PROTOCOL_ERROR_NONE = 0,
+  SARA_R5_PROTOCOL_ERROR_CLASS_FTP = 1,
+  SARA_R5_PROTOCOL_ERROR_CLASS_HTTP = 3,
+  SARA_R5_PROTOCOL_ERROR_CLASS_FLASH_FILESYSTEM = 4,
+  SARA_R5_PROTOCOL_ERROR_CLASS_DNS = 5,
+  SARA_R5_PROTOCOL_ERROR_CLASS_SOCKET = 6,
+  SARA_R5_PROTOCOL_ERROR_CLASS_DYNAMIC_MEMORY = 7,
+  SARA_R5_PROTOCOL_ERROR_CLASS_WRONG_FTP_API = 8,
+  SARA_R5_PROTOCOL_ERROR_CLASS_WRONG_HTTP_API = 10,
+  SARA_R5_PROTOCOL_ERROR_CLASS_SYNTAX = 11,
+  SARA_R5_PROTOCOL_ERROR_CLASS_UNSPECIFIED = 12,
+  SARA_R5_PROTOCOL_ERROR_CLASS_MQTT = 13,
+  SARA_R5_PROTOCOL_ERROR_CLASS_MQTT_SN = 14,
+  SARA_R5_PROTOCOL_ERROR_CLASS_COAP = 15
+} SARA_R5_protocol_error_class_t;
 
 typedef enum
 {
@@ -667,6 +693,7 @@ public:
   SARA_R5_error_t getUtimeIndication(SARA_R5_utime_urc_configuration_t *config);
   SARA_R5_error_t setUtimeConfiguration(int32_t offsetNanoseconds = 0, int32_t offsetSeconds = 0); // +UTIMECFG
   SARA_R5_error_t getUtimeConfiguration(int32_t *offsetNanoseconds, int32_t *offsetSeconds);
+  SARA_R5_error_t setErrorReport(SARA_R5_cme_report_t report); // CMEE error reporting
   
   // Network service AT commands
   int8_t rssi(void); // Receive signal strength

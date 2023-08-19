@@ -1622,6 +1622,22 @@ SARA_R5_error_t SARA_R5::autoTimeZone(bool enable)
   return err;
 }
 
+SARA_R5_error_t SARA_R5::setErrorReport(SARA_R5_cme_report_t report)
+{
+  SARA_R5_error_t err;
+  char *command;
+
+  command = sara_r5_calloc_char(strlen(SARA_R5_COMMAND_CME_REPORT) + 3);
+  if (command == nullptr)
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  sprintf(command, "%s=%d", SARA_R5_COMMAND_CME_REPORT, report);
+
+  err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR,
+                                nullptr, SARA_R5_STANDARD_RESPONSE_TIMEOUT);
+  free(command);
+  return err;
+}
+
 int8_t SARA_R5::rssi(void)
 {
   char *command;
