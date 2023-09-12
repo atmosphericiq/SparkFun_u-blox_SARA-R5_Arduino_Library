@@ -429,10 +429,10 @@ bool SARA_R5::processURCEvent(const char *event)
   }
   { // URC: +UUGIND (Assisted GNSS unsolicited indication)
     int aidMode, result;
-    char *searchPtr = strstr(event, "+UUGIND:");
+    char *searchPtr = strstr(event, SARA_R5_GNSS_ASSISTED_IND_URC);
     if (searchPtr != nullptr)
     {
-      searchPtr += strlen("+UUGIND:"); // Move searchPtr to first character - probably a space
+      searchPtr += strlen(SARA_R5_GNSS_ASSISTED_IND_URC); // Move searchPtr to first character - probably a space
       while (*searchPtr == ' ') searchPtr++; // skip spaces
       int ret = sscanf(searchPtr, "%d,%d", &aidMode, &result);
       if (ret == 2)
@@ -524,8 +524,6 @@ bool SARA_R5::processURCEvent(const char *event)
     unsigned int speedU, cogU;
     char latL[10], lonL[10];
     int dateStore[5];
-
-    // Maybe we should also scan for +UUGIND and extract the activated gnss system?
 
     // This assumes the ULOC response type is "0" or "1" - as selected by gpsRequest detailed
     char *searchPtr = strstr(event, SARA_R5_GNSS_REQUEST_LOCATION_URC);
@@ -6991,7 +6989,7 @@ void SARA_R5::pruneBacklog()
         || (strstr(event, SARA_R5_READ_UDP_SOCKET_URC) != nullptr)
         || (strstr(event, SARA_R5_LISTEN_SOCKET_URC) != nullptr)
         || (strstr(event, SARA_R5_CLOSE_SOCKET_URC) != nullptr)
-        || (strstr(event, "+UUGIND:") != nullptr)
+        || (strstr(event, SARA_R5_GNSS_ASSISTED_IND_URC) != nullptr)
         || (strstr(event, SARA_R5_GNSS_REQUEST_LOCATION_URC) != nullptr)
         || (strstr(event, SARA_R5_SIM_STATE_URC) != nullptr)
         || (strstr(event, SARA_R5_MESSAGE_PDP_ACTION_URC) != nullptr)
