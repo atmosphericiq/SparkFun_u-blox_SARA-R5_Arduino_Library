@@ -5278,6 +5278,11 @@ SARA_R5_error_t SARA_R5::gpsGetFixResponse(char *buf, size_t size, size_t *len)
     ggaBegin = strstr(response, "$GPGGA");
     if (ggaBegin == nullptr)
     {
+      // No match, when multiple constellations are used the default talker ID is "GN" - let's try it too
+      ggaBegin = strstr(response, "$GNGGA");
+    }
+    if (ggaBegin == nullptr)
+    {
       err = SARA_R5_ERROR_UNEXPECTED_RESPONSE;
     }
     else 
@@ -5335,6 +5340,11 @@ SARA_R5_error_t SARA_R5::gpsGetFix(struct PositionData *pos, struct ClockData *c
   {
     // Fast-forward response string to $GPGGA starter
     ggaBegin = strstr(response, "$GPGGA");
+    if (ggaBegin == nullptr)
+    {
+      // No match, when multiple constellations are used the default talker ID is "GN" - let's try it too
+      ggaBegin = strstr(response, "$GNGGA");
+    }
     if (ggaBegin == nullptr)
     {
       err = SARA_R5_ERROR_UNEXPECTED_RESPONSE;
@@ -5438,6 +5448,11 @@ SARA_R5_error_t SARA_R5::gpsGetRmcResponse(char *buf, size_t size, size_t *len) 
     rmcBegin = strstr(response, "$GPRMC");
     if (rmcBegin == nullptr)
     {
+      // No match, when multiple constellations are used the default talker ID is "GN" - let's try it too
+      rmcBegin = strstr(response, "$GNRMC");
+    }
+    if (rmcBegin == nullptr)
+    {
       err = SARA_R5_ERROR_UNEXPECTED_RESPONSE;
     }
     else 
@@ -5495,6 +5510,11 @@ SARA_R5_error_t SARA_R5::gpsGetRmc(struct PositionData *pos, struct SpeedData *s
   {
     // Fast-forward response string to $GPRMC starter
     rmcBegin = strstr(response, "$GPRMC");
+    if (rmcBegin == nullptr)
+    {
+      // No match, when multiple constellations are used the default talker ID is "GN" - let's try it too
+      rmcBegin = strstr(response, "$GNRMC");
+    }
     if (rmcBegin == nullptr)
     {
       err = SARA_R5_ERROR_UNEXPECTED_RESPONSE;
