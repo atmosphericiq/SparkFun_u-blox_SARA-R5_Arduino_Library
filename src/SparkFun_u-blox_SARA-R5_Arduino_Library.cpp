@@ -2168,6 +2168,22 @@ SARA_R5_error_t SARA_R5::enterPPP(uint8_t cid, char dialing_type_char,
   return err;
 }
 
+void SARA_R5::printLastError() 
+{
+  SARA_R5_error_t err;
+  char *command;
+  char *response;
+
+  command = sara_r5_calloc_char(strlen(SARA_R5_LAST_ERROR) + 3);
+  sprintf(command, "%s", SARA_R5_LAST_ERROR);
+  int responseSize = 480;
+  response = sara_r5_calloc_char(responseSize);
+  err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, response,
+                                SARA_R5_3_MIN_TIMEOUT, responseSize);
+  Serial.println(response);
+  free(command);
+}
+
 uint8_t SARA_R5::getOperators(struct operator_stats *opRet, int maxOps)
 {
   SARA_R5_error_t err;

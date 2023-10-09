@@ -118,6 +118,8 @@ const char SARA_R5_REGISTRATION_STATUS[] = "+CREG";
 const char SARA_R5_EPSREGISTRATION_STATUS[] = "+CEREG";
 const char SARA_R5_READ_OPERATOR_NAMES[] = "+COPN";
 const char SARA_R5_COMMAND_MNO[] = "+UMNOPROF"; // MNO (mobile network operator) Profile
+const char SARA_R5_LAST_ERROR[] = "+CEER";
+
 // ### SIM
 const char SARA_R5_SIM_STATE[] = "+USIMSTAT";
 const char SARA_R5_COMMAND_SIMPIN[] = "+CPIN";    // SIM PIN
@@ -744,6 +746,7 @@ public:
   String getCCID(void);
   String getSubscriberNo(void);
   String getCapabilities(void);
+  void printLastError(void);
 
   // Control and status AT commands
   SARA_R5_error_t reset(void);
