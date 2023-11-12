@@ -5991,6 +5991,27 @@ SARA_R5_error_t SARA_R5::getFileBlock(const String& filename, char* buffer, size
   return SARA_R5_ERROR_SUCCESS;
 }
 
+SARA_R5_error_t SARA_R5::getFileList(String *filelist) {
+  SARA_R5_error_t err;
+  char *command = sara_r5_calloc_char(strlen(SARA_R5_FILE_SYSTEM_LIST_FILES) + 2);
+  sprintf(command, "%s=0", SARA_R5_FILE_SYSTEM_LIST_FILES);
+
+  char *response = sara_r5_calloc_char(minimumResponseAllocation);
+  err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, 
+    response, SARA_R5_STANDARD_RESPONSE_TIMEOUT);
+
+  char *responseStart = strstr(response, "+ULSTFILE:");
+  responseStart += strlen("+ULSTFILE:"); // Move to first char of file list
+  char tempBuffer[256]; 
+  sscanf(responseStart, "%s", tempBuffer);
+  *filelist = String(tempBuffer); // Convert C-string to String object
+
+  free(command);
+  free(response);
+  return err;
+}
+
+
 // Set AT+ULSTFILE=1[,<tag>] +ULSTFILE: <free_fs_space>
 // +ULSTFILE: 236800
 SARA_R5_error_t SARA_R5::getFreeSpace(int32_t *size) {
