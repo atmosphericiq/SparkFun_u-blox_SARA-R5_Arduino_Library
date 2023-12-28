@@ -5619,7 +5619,6 @@ SARA_R5_error_t SARA_R5::gpsAidingServerConf(const char *primaryServer, const ch
   return err;
 }
 
-
 // OK for text files. But will fail with binary files (containing \0) on some platforms.
 SARA_R5_error_t SARA_R5::appendFileContents(String filename, const char *str, int len)
 {
@@ -5640,7 +5639,7 @@ SARA_R5_error_t SARA_R5::appendFileContents(String filename, const char *str, in
   sprintf(command, "%s=\"%s\",%d", SARA_R5_FILE_SYSTEM_DOWNLOAD_FILE, filename.c_str(), dataLen);
 
   err = sendCommandWithResponse(command, ">", response,
-                                SARA_R5_STANDARD_RESPONSE_TIMEOUT*2);
+    SARA_R5_STANDARD_RESPONSE_TIMEOUT*2);
 
   unsigned long writeDelay = millis();
   while (millis() < (writeDelay + 50))
