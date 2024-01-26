@@ -1050,8 +1050,8 @@ public:
   SARA_R5_error_t appendFileContents(String filename, String str);
   SARA_R5_error_t appendFileContents(String filename, const char *str, int len);
   SARA_R5_error_t getFileSize(String filename, int *size);
-  SARA_R5_error_t getFreeSpace(int32_t *size);
-  SARA_R5_error_t getFileList(String *files);
+  SARA_R5_error_t getFreeSpace(int *space);
+  SARA_R5_error_t getFileList(String *filelist);
   SARA_R5_error_t deleteFile(String filename);
 
   // Functionality

@@ -5990,44 +5990,138 @@ SARA_R5_error_t SARA_R5::getFileBlock(const String& filename, char* buffer, size
   return SARA_R5_ERROR_SUCCESS;
 }
 
-SARA_R5_error_t SARA_R5::getFileList(String *filelist) {
+SARA_R5_error_t SARA_R5::getFileList(String *filelist)
+{
   SARA_R5_error_t err;
-  char *command = sara_r5_calloc_char(strlen(SARA_R5_FILE_SYSTEM_LIST_FILES) + 2);
+  char *command;
+  char *response;
+
+  command = sara_r5_calloc_char(strlen(SARA_R5_FILE_SYSTEM_LIST_FILES) + 4);
+  if (command == nullptr)
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
   sprintf(command, "%s=0", SARA_R5_FILE_SYSTEM_LIST_FILES);
 
-  char *response = sara_r5_calloc_char(minimumResponseAllocation);
-  err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, 
-    response, SARA_R5_STANDARD_RESPONSE_TIMEOUT);
+  response = sara_r5_calloc_char(1024);
+  if (response == nullptr)
+  {
+    free(command);
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  }
 
-  char *responseStart = strstr(response, "+ULSTFILE:");
-  responseStart += strlen("+ULSTFILE:"); // Move to first char of file list
-  char tempBuffer[256]; 
-  sscanf(responseStart, "%s", tempBuffer);
-  *filelist = String(tempBuffer); // Convert C-string to String object
+  err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, response,
+                                SARA_R5_STANDARD_RESPONSE_TIMEOUT, 1024);
+  if (err != SARA_R5_ERROR_SUCCESS)
+  {
+    if (_printDebug == true)
+    {
+      _debugPort->print(F("getFileList: Fail: Error: "));
+      _debugPort->print(err);
+      _debugPort->print(F("  Response: {"));
+      _debugPort->print(response);
+      _debugPort->println(F("}"));
+    }
+    free(command);
+    free(response);
+    return err;
+  }
+
+  // Example response:
+  // \r\n+ULSTFILE: "filename1","filename2"\r\n\r\nOK\r\n
+  char *searchPtr = strstr(response, "+ULSTFILE:");
+  if (searchPtr == nullptr)
+  {
+    if (_printDebug == true)
+    {
+      _debugPort->print(F("getFileList: Failure: {"));
+      _debugPort->print(response);
+      _debugPort->println(F("}"));
+    }
+    free(command);
+    free(response);
+    return SARA_R5_ERROR_UNEXPECTED_RESPONSE;
+  }
+
+  *filelist = "";
+  searchPtr += strlen("+ULSTFILE:"); // Move searchPtr to first char
+  while (*searchPtr == ' ') searchPtr++; // skip spaces
+  char *responseEnd = strstr(searchPtr, "\r\nOK\r\n");
+  if (responseEnd == nullptr)
+  {
+    if (_printDebug == true)
+    {
+      _debugPort->print(F("getFileList: Failure: {"));
+      _debugPort->print(searchPtr);
+      _debugPort->println(F("}"));
+    }
+    free(command);
+    free(response);
+    return SARA_R5_ERROR_UNEXPECTED_RESPONSE;
+  }
+  while ((searchPtr < responseEnd) && (*(searchPtr) != '\r') && (*(searchPtr) != '\n') && (*(searchPtr) != '\0'))
+  {
+    filelist->concat(*(searchPtr++));
+  }
 
   free(command);
   free(response);
   return err;
 }
 
-
-// Set AT+ULSTFILE=1[,<tag>] +ULSTFILE: <free_fs_space>
-// +ULSTFILE: 236800
-SARA_R5_error_t SARA_R5::getFreeSpace(int32_t *size) {
+SARA_R5_error_t SARA_R5::getFreeSpace(int *space)
+{
   SARA_R5_error_t err;
   char *command;
   char *response;
-  command = sara_r5_calloc_char(strlen(SARA_R5_FILE_SYSTEM_LIST_FILES) + 2);
-  sprintf(command, "%s=1", SARA_R5_FILE_SYSTEM_LIST_FILES);
-  response = sara_r5_calloc_char(minimumResponseAllocation);
-  err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, response, SARA_R5_STANDARD_RESPONSE_TIMEOUT);
 
-  int fileSize;
+  command = sara_r5_calloc_char(strlen(SARA_R5_FILE_SYSTEM_LIST_FILES) + 4);
+  if (command == nullptr)
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  sprintf(command, "%s=1", SARA_R5_FILE_SYSTEM_LIST_FILES);
+
+  response = sara_r5_calloc_char(minimumResponseAllocation);
+  if (response == nullptr)
+  {
+    free(command);
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  }
+
+  err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, response, SARA_R5_STANDARD_RESPONSE_TIMEOUT);
+  if (err != SARA_R5_ERROR_SUCCESS)
+  {
+    if (_printDebug == true)
+    {
+      _debugPort->print(F("getFreeSpace: Fail: Error: "));
+      _debugPort->print(err);
+      _debugPort->print(F("  Response: {"));
+      _debugPort->print(response);
+      _debugPort->println(F("}"));
+    }
+    free(command);
+    free(response);
+    return err;
+  }
+
+  // Example response:
+  // \r\n+ULSTFILE: 236800\r\n\r\nOK\r\n
   char *responseStart = strstr(response, "+ULSTFILE:");
-  responseStart += strlen("+ULSTFILE:"); //  Move searchPtr to first char
+  if (responseStart == nullptr)
+  {
+    if (_printDebug == true)
+    {
+      _debugPort->print(F("getFreeSpace: Failure: {"));
+      _debugPort->print(response);
+      _debugPort->println(F("}"));
+    }
+    free(command);
+    free(response);
+    return SARA_R5_ERROR_UNEXPECTED_RESPONSE;
+  }
+
+  int freeSpace;
+  responseStart += strlen("+ULSTFILE:"); // Move searchPtr to first char
   while (*responseStart == ' ') responseStart++; // skip spaces
-  sscanf(responseStart, "%d", &fileSize);
-  *size = fileSize;
+  sscanf(responseStart, "%d\r\n", &freeSpace);
+  *space = freeSpace;
 
   free(command);
   free(response);
