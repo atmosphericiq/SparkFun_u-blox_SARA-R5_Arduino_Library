@@ -156,6 +156,7 @@ const char SARA_R5_GET_ERROR[] = "+USOER";          // Get last socket error.
 const char SARA_R5_SOCKET_DIRECT_LINK[] = "+USODL"; // Set socket in Direct Link mode
 const char SARA_R5_SOCKET_CONTROL[] = "+USOCTL";    // Query the socket parameters
 const char SARA_R5_UD_CONFIGURATION[] = "+UDCONF";  // User Datagram Configuration
+const char SARA_R5_SECURE_SOCKET[] = "+USOSEC";     // SSL/TLS/DTLS mode configuration
 // ### Ping
 const char SARA_R5_PING_COMMAND[] = "+UPING"; // Ping
 // ### HTTP
@@ -929,6 +930,8 @@ public:
   SARA_R5_error_t querySocketRemoteIPAddress(int socket, IPAddress *address, int *port);
   SARA_R5_error_t querySocketStatusTCP(int socket, SARA_R5_tcp_socket_status_t *status);
   SARA_R5_error_t querySocketOutUnackData(int socket, uint32_t *total);
+  // enable / disable socket securoty 
+  SARA_R5_error_t socketSetSecure(int profile, bool secure, int secprofile = -1);
   // Return the most recent socket error
   int socketGetLastError();
   // Return the remote IP Address from the most recent socket listen indication (socket connection)
@@ -1044,7 +1047,7 @@ public:
   // TO DO: add full support for file tags. Default tag to USER
   SARA_R5_error_t getFileContents(String filename, String *contents); // OK for text files. But will fail with binary files (containing \0) on some platforms.
   SARA_R5_error_t getFileContents(String filename, char *contents); // OK for binary files. Make sure contents can hold the entire file. Get the size first with getFileSize.
-  SARA_R5_error_t getFileBlock(const String& filename, char* buffer, size_t offset, size_t length, size_t& bytes_read); // OK for binary files. Make sure buffer can hold the requested block size.
+  SARA_R5_error_t getFileBlock(const String& filename, char* buffer, size_t offset, size_t requestedLength, size_t& bytesRead); // OK for binary files. Make sure buffer can hold the requested block size.
 
   // Append data to a file, delete file first to not appends the data.
   SARA_R5_error_t appendFileContents(String filename, String str);
