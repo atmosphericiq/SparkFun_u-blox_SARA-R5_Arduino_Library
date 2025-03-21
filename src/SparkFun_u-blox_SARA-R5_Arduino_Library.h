@@ -750,6 +750,11 @@ public:
   String getCapabilities(void);
   void printLastError(void);
 
+  SARA_R5_error_t autoDetectModel(void);
+  SARA_R5_error_t getRegistrationInfo(
+      SARA_R5_registration_status_t* status, unsigned int* lac, 
+      unsigned int* cellId, int* act);
+
   // Control and status AT commands
   SARA_R5_error_t reset(void);
   String clock(void);

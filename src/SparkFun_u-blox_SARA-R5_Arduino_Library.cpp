@@ -1039,6 +1039,84 @@ String SARA_R5::getManufacturerID(void)
   return String(idResponse);
 }
 
+SARA_R5_error_t SARA_R5::autoDetectModel(void)
+{
+  return SARA_R5_SUCCESS;
+}
+
+SARA_R5_error_t SARA_R5::getRegistrationInfo(
+  SARA_R5_registration_status_t* status,
+  unsigned int* lac,
+  unsigned int* cellId,
+  int* act
+) {
+  // Check if the pointers are valid
+  if (status == nullptr || lac == nullptr || cellId == nullptr || act == nullptr) {
+    return SARA_R5_ERROR_ERROR;
+  }
+
+  char* response = sara_r5_calloc_char(minimumResponseAllocation);
+  if (response == nullptr) {
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  }
+
+  // Build the command string
+  char* command = sara_r5_calloc_char(strlen(SARA_R5_REGISTRATION_STATUS) + 2);
+  if (command == nullptr) {
+    free(response);
+    return SARA_R5_ERROR_OUT_OF_MEMORY;
+  }
+  sprintf(command, "%s?", SARA_R5_REGISTRATION_STATUS);
+
+  SARA_R5_error_t err = sendCommandWithResponse(command, SARA_R5_RESPONSE_OK_OR_ERROR, response, SARA_R5_STANDARD_RESPONSE_TIMEOUT);
+  free(command);
+
+  _debugPort->print(F("getRegistrationInfo: "));
+  _debugPort->println(response);
+
+  if (err != SARA_R5_ERROR_SUCCESS) {
+    free(response);
+    return err;
+  }
+
+  // Parse the response: "+CREG: <stat>[,<lac>],[<ci>][,<AcTStatus>]"
+  // Find "+CREG:" prefix
+  const char* prefix = "+CREG:";
+  char* cregPos = strstr(response, prefix);
+  if (cregPos == nullptr) {
+    free(response);
+    return SARA_R5_ERROR_UNEXPECTED_RESPONSE;
+  }
+
+  // Move past "+CREG: "
+  cregPos += strlen(prefix);
+  while (*cregPos == ' ') cregPos++;
+
+  // Parse values
+  int statInt = 0;
+  unsigned int lacVal = 0;
+  unsigned int ciVal = 0;
+  int actVal = 0;
+
+  // stat, lac (hex), ci (hex), act
+  int parsed = sscanf(cregPos, "%d,%*d,\"%x\",\"%x\",%d", &statInt, &lacVal, &ciVal, &actVal);
+
+  // parsed fields: 2 (stat & act only), 3 (stat, lac, ci), 4 (stat, lac, ci, act)
+  if (parsed < 1) {
+    free(response);
+    return SARA_R5_ERROR_UNEXPECTED_RESPONSE;
+  }
+
+  *status = (SARA_R5_registration_status_t)statInt;
+  *lac = lacVal;
+  *cellId = ciVal;
+  *act = actVal;
+
+  free(response);
+  return SARA_R5_ERROR_SUCCESS;
+}
+
+
 String SARA_R5::getModelID(void)
 {
   char *response;
